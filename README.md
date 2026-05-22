@@ -88,9 +88,9 @@ from a5c_engram.llm.anthropic import AnthropicLLM
 p = Profile.open("real", llm=AnthropicLLM())   # uses ANTHROPIC_API_KEY
 ```
 
-Adding your own provider is a `LLMAdapter` protocol with three methods
-(`extract`, `hyde`, `synthesise`). See `src/a5c_engram/llm/anthropic.py`
-for a complete example you can copy.
+Adding your own provider is a `LLMAdapter` protocol with four methods
+(`extract`, `paraphrase`, `hyde`, `synthesise`). See
+`src/a5c_engram/llm/anthropic.py` for a complete example you can copy.
 
 ### 5. Plug in a real embedder (optional)
 
@@ -113,16 +113,22 @@ your own `EmbedAdapter` — also a three-method protocol.
    unsupported or malformed candidates. Two passes: a deterministic regex
    pre-pass (temporal, numeric, self-reference) that needs no LLM, then an
    LLM dual-pass over chunks and overlapping detail windows.
-2. **Supersede, don't append.** Facts and instructions carry a `fact_key`
+2. **Augment at write time.** Every non-task memory also gets 3-5
+   LLM-generated search-query paraphrases stored alongside it. These are
+   indexed by FTS and fed into the embedding, so the same memory is
+   reachable by multiple lexical shapes.
+3. **Supersede, don't append.** Facts and instructions carry a `fact_key`
    (a snake_case topic). When a new memory shares a `fact_key` with an
    existing one, the old one is marked `superseded_by` the new one and
    stops showing up in recall. The chain is preserved for inspection.
-3. **Five-channel retrieval, fused with RRF.** Each `recall` runs in
+4. **Six-channel retrieval, fused with RRF.** Each `recall` runs in
    parallel across FTS5, fact-key exact lookup, raw message FTS, direct
-   vector similarity, and HyDE (LLM hallucinated answer → embed → search).
-   Results are merged with Reciprocal Rank Fusion. Per-channel results are
-   returned alongside the fused list — so you can see which channel found
-   what.
+   vector similarity, **temporal range** (deterministic, for
+   "yesterday"/"last week"/"last N hours" queries), and HyDE (LLM
+   hallucinated answer → embed → search). Results merge with Reciprocal
+   Rank Fusion. Per-channel results are returned alongside the fused list
+   — so you can see which channel found what. Temporal queries skip the
+   HyDE LLM call because we already know the answer is a time window.
 
 ## Project shape
 

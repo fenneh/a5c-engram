@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS memories (
     profile TEXT NOT NULL,
     type TEXT NOT NULL,
     content TEXT NOT NULL,
+    search_keywords TEXT NOT NULL DEFAULT '',
     created_at REAL NOT NULL,
     fact_key TEXT,
     version INTEGER NOT NULL DEFAULT 1,
@@ -35,25 +36,29 @@ CREATE INDEX IF NOT EXISTS idx_memories_profile ON memories(profile);
 CREATE INDEX IF NOT EXISTS idx_memories_type ON memories(profile, type);
 CREATE INDEX IF NOT EXISTS idx_memories_factkey ON memories(profile, fact_key, version DESC);
 CREATE INDEX IF NOT EXISTS idx_memories_session ON memories(profile, source_session_id);
+CREATE INDEX IF NOT EXISTS idx_memories_created ON memories(profile, created_at DESC);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS memories_fts USING fts5(
     content,
+    search_keywords,
     content='memories',
     content_rowid='rowid',
     tokenize='porter unicode61'
 );
 
 CREATE TRIGGER IF NOT EXISTS memories_ai AFTER INSERT ON memories BEGIN
-    INSERT INTO memories_fts(rowid, content) VALUES (new.rowid, new.content);
+    INSERT INTO memories_fts(rowid, content, search_keywords)
+    VALUES (new.rowid, new.content, new.search_keywords);
 END;
 CREATE TRIGGER IF NOT EXISTS memories_ad AFTER DELETE ON memories BEGIN
-    INSERT INTO memories_fts(memories_fts, rowid, content)
-    VALUES('delete', old.rowid, old.content);
+    INSERT INTO memories_fts(memories_fts, rowid, content, search_keywords)
+    VALUES('delete', old.rowid, old.content, old.search_keywords);
 END;
 CREATE TRIGGER IF NOT EXISTS memories_au AFTER UPDATE ON memories BEGIN
-    INSERT INTO memories_fts(memories_fts, rowid, content)
-    VALUES('delete', old.rowid, old.content);
-    INSERT INTO memories_fts(rowid, content) VALUES (new.rowid, new.content);
+    INSERT INTO memories_fts(memories_fts, rowid, content, search_keywords)
+    VALUES('delete', old.rowid, old.content, old.search_keywords);
+    INSERT INTO memories_fts(rowid, content, search_keywords)
+    VALUES (new.rowid, new.content, new.search_keywords);
 END;
 
 CREATE TABLE IF NOT EXISTS messages (
@@ -143,8 +148,12 @@ class SqliteStorage:
         for r in rows:
             p = out.setdefault(
                 r["profile"],
-                {"name": r["profile"], "counts": {t.value: 0 for t in MemoryType},
-                 "last_ingested_at": 0.0, "total": 0},
+                {
+                    "name": r["profile"],
+                    "counts": {t.value: 0 for t in MemoryType},
+                    "last_ingested_at": 0.0,
+                    "total": 0,
+                },
             )
             p["counts"][r["type"]] = r["cnt"]
             p["total"] += r["cnt"]
@@ -169,14 +178,24 @@ class SqliteStorage:
         conn.execute(
             """
             INSERT OR REPLACE INTO memories
-            (id, profile, type, content, created_at, fact_key, version,
-             superseded_by, source_session_id, source_message_id, expires_at, extra)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            (id, profile, type, content, search_keywords, created_at, fact_key,
+             version, superseded_by, source_session_id, source_message_id,
+             expires_at, extra)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                mem.id, mem.profile, mem.type.value, mem.content, mem.created_at,
-                mem.fact_key, mem.version, mem.superseded_by,
-                mem.source_session_id, mem.source_message_id, mem.expires_at,
+                mem.id,
+                mem.profile,
+                mem.type.value,
+                mem.content,
+                mem.search_keywords,
+                mem.created_at,
+                mem.fact_key,
+                mem.version,
+                mem.superseded_by,
+                mem.source_session_id,
+                mem.source_message_id,
+                mem.expires_at,
                 json.dumps(mem.extra),
             ),
         )
@@ -308,9 +327,7 @@ class SqliteStorage:
     def search_factkey(self, profile: str, topic: str) -> Memory | None:
         return self.latest_for_factkey(profile, topic)
 
-    def search_vector(
-        self, profile: str, embedding: list[float], k: int = 10
-    ) -> list[Memory]:
+    def search_vector(self, profile: str, embedding: list[float], k: int = 10) -> list[Memory]:
         if not self._vec_available:
             return []
         conn = self._connect()
@@ -323,6 +340,23 @@ class SqliteStorage:
             ORDER BY v.distance
             """,
             (_f32_blob(embedding), k, profile),
+        ).fetchall()
+        return [_row_to_memory(r) for r in rows]
+
+    def search_temporal(
+        self, profile: str, start_ts: float, end_ts: float, k: int = 50
+    ) -> list[Memory]:
+        conn = self._connect()
+        rows = conn.execute(
+            """
+            SELECT * FROM memories
+            WHERE profile = ?
+              AND created_at >= ? AND created_at < ?
+              AND superseded_by IS NULL
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (profile, start_ts, end_ts, k),
         ).fetchall()
         return [_row_to_memory(r) for r in rows]
 
@@ -359,13 +393,15 @@ class SqliteStorage:
                 "SELECT COUNT(*) FROM memories WHERE profile=? AND source_session_id=?",
                 (profile, r["session_id"]),
             ).fetchone()[0]
-            out.append({
-                "session_id": r["session_id"],
-                "message_count": r["message_count"],
-                "first_ts": r["first_ts"],
-                "last_ts": r["last_ts"],
-                "memory_count": mem_count,
-            })
+            out.append(
+                {
+                    "session_id": r["session_id"],
+                    "message_count": r["message_count"],
+                    "first_ts": r["first_ts"],
+                    "last_ts": r["last_ts"],
+                    "memory_count": mem_count,
+                }
+            )
         return out
 
     def memories_for_session(self, profile: str, session_id: str) -> list[Memory]:
@@ -380,11 +416,13 @@ class SqliteStorage:
 
 def _row_to_memory(row: sqlite3.Row | None) -> Memory:
     assert row is not None
+    keys = row.keys()
     return Memory(
         id=row["id"],
         profile=row["profile"],
         type=MemoryType(row["type"]),
         content=row["content"],
+        search_keywords=row["search_keywords"] if "search_keywords" in keys else "",
         created_at=row["created_at"],
         fact_key=row["fact_key"],
         version=row["version"],

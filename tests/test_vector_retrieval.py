@@ -27,13 +27,15 @@ def vec_profile(tmp_path):
     api = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     cooking = [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     weather = [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]
-    emb = MockEmbedder({
-        "We use GraphQL for the API.": api,
-        "Roast the chicken at 200C.": cooking,
-        "It will rain tomorrow.": weather,
-        "What API do we use?": api,
-        "What is for dinner?": cooking,
-    })
+    emb = MockEmbedder(
+        {
+            "We use GraphQL for the API.": api,
+            "Roast the chicken at 200C.": cooking,
+            "It will rain tomorrow.": weather,
+            "What API do we use?": api,
+            "What is for dinner?": cooking,
+        }
+    )
     return _profile_with(emb, FakeLLM(), tmp_path)
 
 
@@ -67,15 +69,17 @@ def test_hyde_uses_hallucinated_answer(tmp_path):
             # Deliberately hallucinate a cooking answer regardless of query.
             return "cooking topic"
 
-    emb = MockEmbedder({
-        "GraphQL fact": api,
-        "Roast chicken at 200C.": cooking,
-        # The hypothetical answer text routes to the cooking cluster.
-        "cooking topic": cooking,
-        # The raw query routes to the API cluster, so HyDE and vector
-        # should pull in *different* memories.
-        "abstract question": api,
-    })
+    emb = MockEmbedder(
+        {
+            "GraphQL fact": api,
+            "Roast chicken at 200C.": cooking,
+            # The hypothetical answer text routes to the cooking cluster.
+            "cooking topic": cooking,
+            # The raw query routes to the API cluster, so HyDE and vector
+            # should pull in *different* memories.
+            "abstract question": api,
+        }
+    )
     storage = SqliteStorage(path=tmp_path / "engram.db", dim=emb.dim)
     storage.init()
     p = Profile("t", storage=storage, embedder=emb, llm=FixedAnswerLLM())

@@ -61,9 +61,7 @@ def api_ingest(name: str, body: IngestBody):
 def api_remember(name: str, body: RememberBody):
     p = _get(name)
     try:
-        m = p.remember(
-            body.content, type=body.type, topic=body.topic, session_id=body.session_id
-        )
+        m = p.remember(body.content, type=body.type, topic=body.topic, session_id=body.session_id)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     return m.to_dict()
@@ -72,9 +70,7 @@ def api_remember(name: str, body: RememberBody):
 @app.post("/api/profiles/{name}/recall")
 def api_recall(name: str, body: RecallBody):
     p = _get(name)
-    result = p.recall(
-        body.query, k=body.k, use_hyde=body.use_hyde, synthesise=body.synthesise
-    )
+    result = p.recall(body.query, k=body.k, use_hyde=body.use_hyde, synthesise=body.synthesise)
     return {
         "query": result.query,
         "synthesis": result.synthesis,

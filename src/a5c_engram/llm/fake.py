@@ -14,32 +14,49 @@ class FakeLLM:
         if "uses graphql" in lower:
             out.append(
                 ExtractionCandidate(
-                    type="fact", content="The project uses GraphQL.",
-                    fact_key="api_style", confidence=0.9, evidence=text[:120],
+                    type="fact",
+                    content="The project uses GraphQL.",
+                    fact_key="api_style",
+                    confidence=0.9,
+                    evidence=text[:120],
                 )
             )
         if "uses rest" in lower:
             out.append(
                 ExtractionCandidate(
-                    type="fact", content="The project uses REST.",
-                    fact_key="api_style", confidence=0.9, evidence=text[:120],
+                    type="fact",
+                    content="The project uses REST.",
+                    fact_key="api_style",
+                    confidence=0.9,
+                    evidence=text[:120],
                 )
             )
         if "deployed" in lower or "shipped" in lower:
             out.append(
                 ExtractionCandidate(
-                    type="event", content=text.strip()[:200],
-                    confidence=0.6, evidence=text[:200],
+                    type="event",
+                    content=text.strip()[:200],
+                    confidence=0.6,
+                    evidence=text[:200],
                 )
             )
         if "always " in lower or "never " in lower:
             out.append(
                 ExtractionCandidate(
-                    type="instruction", content=text.strip()[:200],
-                    confidence=0.6, evidence=text[:200],
+                    type="instruction",
+                    content=text.strip()[:200],
+                    confidence=0.6,
+                    evidence=text[:200],
                 )
             )
         return out
+
+    def paraphrase(self, content: str) -> list[str]:
+        # Deterministic stub: a couple of trivially transformed paraphrases
+        # so the indexer has something non-empty to write. Real LLMs do far
+        # better — see AnthropicLLM.paraphrase.
+        lower = content.lower().rstrip(".!?")
+        return [lower, f"about {lower}", f"info on {lower}"]
 
     def hyde(self, query: str) -> str:
         return f"A likely answer to '{query}' is that the relevant facts apply here."

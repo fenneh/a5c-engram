@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse
@@ -32,9 +32,7 @@ def mount_ui(app: FastAPI, *, get_profile: Callable[[str], object]) -> None:
             get_profile("default")
         any_storage = _any_storage(app, get_profile)
         profiles = any_storage.list_profiles() if any_storage else []
-        return TEMPLATES.TemplateResponse(
-            request, "profiles.html", {"profiles": profiles}
-        )
+        return TEMPLATES.TemplateResponse(request, "profiles.html", {"profiles": profiles})
 
     @app.get("/ui/p/{name}", response_class=HTMLResponse)
     def ui_profile(
@@ -106,11 +104,13 @@ def mount_ui(app: FastAPI, *, get_profile: Callable[[str], object]) -> None:
 def _profiles_registered(app: FastAPI) -> bool:
     # Best-effort: check the module-level singleton.
     from a5c_engram.server.app import _profiles
+
     return bool(_profiles)
 
 
 def _any_storage(app: FastAPI, get_profile):
     from a5c_engram.server.app import _profiles
+
     if _profiles:
         return next(iter(_profiles.values())).storage
     p = get_profile("default")

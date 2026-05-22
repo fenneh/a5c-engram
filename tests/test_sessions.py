@@ -44,12 +44,8 @@ def test_session_with_no_extracted_memories(profile):
 
 
 def test_list_sessions_ordered_by_recent(profile):
-    profile.ingest(
-        [{"role": "user", "content": "older"}], session_id="old", use_llm=False
-    )
-    profile.ingest(
-        [{"role": "user", "content": "newer"}], session_id="new", use_llm=False
-    )
+    profile.ingest([{"role": "user", "content": "older"}], session_id="old", use_llm=False)
+    profile.ingest([{"role": "user", "content": "newer"}], session_id="new", use_llm=False)
     sessions = profile.storage.list_sessions("test")
     # Most recent first.
     assert sessions[0]["session_id"] in {"new", "old"}

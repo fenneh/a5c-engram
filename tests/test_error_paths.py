@@ -69,6 +69,7 @@ def test_remember_invalid_type_raises(profile):
 def test_api_404_routes(tmp_path, monkeypatch):
     monkeypatch.setenv("A5C_ENGRAM_DB", str(tmp_path / "engram.db"))
     from a5c_engram.server import app as srv_module
+
     srv_module._profiles.clear()
     c = TestClient(srv_module.app)
     r = c.get("/api/profiles/never-seen/memories/no-such-id")

@@ -6,7 +6,10 @@ from pathlib import Path
 from typing import Any
 
 from a5c_engram.embed.base import EmbedAdapter, FakeEmbedder
-from a5c_engram.extract.deterministic import deterministic_extract
+from a5c_engram.extract.deterministic import (
+    deterministic_extract,
+    parse_temporal_range,
+)
 from a5c_engram.extract.llm import llm_extract
 from a5c_engram.extract.verify import verify_candidate
 from a5c_engram.llm.base import ExtractionCandidate, LLMAdapter
@@ -114,7 +117,9 @@ class Profile:
             confidence=1.0,
             evidence=content,
         )
-        mem = self._commit_candidate(cand, session_id=session_id, expires_at=expires_at, extra=extra)
+        mem = self._commit_candidate(
+            cand, session_id=session_id, expires_at=expires_at, extra=extra
+        )
         assert mem is not None
         return mem
 
@@ -126,7 +131,11 @@ class Profile:
         use_hyde: bool = True,
         synthesise: bool = False,
     ) -> RecallResult:
-        """Five-channel retrieval with RRF fusion."""
+        """Six-channel retrieval with RRF fusion. The temporal channel only
+        activates when the query contains a natural-language time phrase
+        (yesterday, last week, last 24 hours, etc.) and bypasses the LLM
+        HyDE call when it does — we already know the answer is a time
+        window."""
         by_channel: dict[str, list[Memory]] = {}
 
         # Channel 1: FTS
@@ -150,8 +159,17 @@ class Profile:
         else:
             by_channel["vector"] = []
 
-        # Channel 5: HyDE
-        if use_hyde and self.llm is not None and self.embedder is not None:
+        # Channel 5: temporal — deterministic time-window parser.
+        time_range = parse_temporal_range(query)
+        if time_range is not None:
+            start_ts, end_ts = time_range
+            by_channel["temporal"] = self.storage.search_temporal(self.name, start_ts, end_ts, k=k)
+        else:
+            by_channel["temporal"] = []
+
+        # Channel 6: HyDE — skip when temporal matched (we already know the
+        # answer shape, no point hallucinating one).
+        if use_hyde and time_range is None and self.llm is not None and self.embedder is not None:
             hypothetical = self.llm.hyde(query)
             hvec = self.embedder.embed(hypothetical)
             by_channel["hyde"] = self.storage.search_vector(self.name, hvec, k=k)
@@ -196,10 +214,19 @@ class Profile:
         expires_at: float | None = None,
         extra: dict[str, Any] | None = None,
     ) -> Memory | None:
+        keywords = ""
+        if self.llm is not None and cand.type != MemoryType.TASK.value:
+            try:
+                phrases = self.llm.paraphrase(cand.content)
+            except Exception:
+                phrases = []
+            keywords = " | ".join(phrases)
+
         mem = Memory.new(
             profile=self.name,
             type=cand.type,
             content=cand.content,
+            search_keywords=keywords,
             fact_key=cand.fact_key,
             source_session_id=session_id,
             expires_at=expires_at,
@@ -212,7 +239,12 @@ class Profile:
 
         # Tasks are excluded from vector index — they're ephemeral.
         if mem.type != MemoryType.TASK and self.embedder is not None:
-            vec = self.embedder.embed(mem.content)
+            # Embed content + paraphrases together so vector recall benefits
+            # from the same query-shape augmentation as FTS does.
+            embed_text = mem.content
+            if mem.search_keywords:
+                embed_text = f"{mem.content} {mem.search_keywords}"
+            vec = self.embedder.embed(embed_text)
             self.storage.upsert_embedding(mem.id, vec)
         return mem
 

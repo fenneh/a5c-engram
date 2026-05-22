@@ -30,7 +30,7 @@ def llm_extract(text: str, llm: LLMAdapter) -> list[ExtractionCandidate]:
 def _chunks(s: str, size: int) -> list[str]:
     if len(s) <= size:
         return [s]
-    return [s[i:i + size] for i in range(0, len(s), size)]
+    return [s[i : i + size] for i in range(0, len(s), size)]
 
 
 def _windows(s: str, size: int, overlap: int) -> list[str]:
@@ -38,7 +38,7 @@ def _windows(s: str, size: int, overlap: int) -> list[str]:
     out = []
     i = 0
     while i < len(s):
-        out.append(s[i:i + size])
+        out.append(s[i : i + size])
         if i + size >= len(s):
             break
         i += step

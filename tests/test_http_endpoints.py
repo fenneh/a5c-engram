@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("A5C_ENGRAM_DB", str(tmp_path / "engram.db"))
     from a5c_engram.server import app as srv_module
+
     srv_module._profiles.clear()
     return TestClient(srv_module.app)
 
@@ -94,9 +95,7 @@ def test_ingest_endpoint(client):
     r = client.post(
         "/api/profiles/atlas/ingest",
         json={
-            "messages": [
-                {"role": "user", "content": "Always run tests before merging."}
-            ],
+            "messages": [{"role": "user", "content": "Always run tests before merging."}],
             "session_id": "s1",
             "use_llm": False,
         },

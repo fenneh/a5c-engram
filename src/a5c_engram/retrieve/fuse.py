@@ -6,6 +6,7 @@ from a5c_engram.schema import Memory, RecallHit
 # topic hits, not heuristics. Tuneable.
 CHANNEL_WEIGHTS: dict[str, float] = {
     "factkey": 2.0,
+    "temporal": 1.5,  # natural-language time queries are precise when they hit
     "fts": 1.0,
     "vector": 1.0,
     "hyde": 0.9,

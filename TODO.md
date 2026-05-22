@@ -1,30 +1,29 @@
 # TODO
 
-Known gaps in v0. Roughly ordered by what most needs doing first.
-
 ## Test coverage
 
-70 tests cover the public API and the inspection UI. Still uncovered:
+83 tests cover the public API, inspection UI, and the deterministic
+temporal/paraphrase paths. Still uncovered:
 
 - `BgeSmallEmbedder` and `AnthropicLLM` integration tests — both need
   network/model downloads and are skipped from the default suite. The
   `examples/real_*_demo.py` scripts exercise them by hand.
 - Concurrency on the FastAPI singleton `_profiles` dict — fine for
   single-process deployments, untested under multi-worker uvicorn.
-- DB migrations / schema upgrades — there's nothing to migrate yet, but
-  the moment we add a column we'll need a story.
+- DB migrations — there's no migration story yet. The moment we add a
+  column to a deployed table we'll need one.
 
 ## Features
 
 - `expires_at` — the column exists but nothing reads it. Add a sweeper
   that removes expired memories, or filter them at recall time.
-- LLM-driven query analysis — currently `_candidate_factkeys` derives
-  factkeys from query tokens by hand. An LLM pass would produce better
-  candidates.
-- Temporal queries — bypass the LLM with regex + arithmetic for
-  "yesterday / last week" style questions.
-- Postgres adapter — `StorageAdapter` protocol is there, no implementation.
-- Export / import — JSONL round-trip via CLI.
+- More temporal phrases — currently `yesterday`/`today`/`tomorrow`/
+  `last week`/`last N units`. No support for "two months ago", named
+  weekdays, or absolute dates as deltas.
+- LLM-driven factkey candidates — `_candidate_factkeys` derives factkeys
+  from query tokens by hand. An LLM pass would produce better candidates.
+- Postgres adapter — `StorageAdapter` protocol is there, no impl.
+- Export / import — JSONL CLI round-trip.
 
 ## Known issues
 

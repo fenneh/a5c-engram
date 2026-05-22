@@ -4,11 +4,11 @@ import hashlib
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Literal
 
 
-class MemoryType(str, Enum):
+class MemoryType(StrEnum):
     FACT = "fact"
     EVENT = "event"
     INSTRUCTION = "instruction"
@@ -40,6 +40,7 @@ class Memory:
     profile: str
     type: MemoryType
     content: str
+    search_keywords: str = ""
     created_at: float = field(default_factory=time.time)
     fact_key: str | None = None
     version: int = 1
@@ -57,6 +58,7 @@ class Memory:
         type: MemoryType | str,
         content: str,
         fact_key: str | None = None,
+        search_keywords: str = "",
         source_session_id: str | None = None,
         source_message_id: str | None = None,
         expires_at: float | None = None,
@@ -67,6 +69,7 @@ class Memory:
             profile=profile,
             type=MemoryType(type),
             content=content,
+            search_keywords=search_keywords,
             fact_key=fact_key,
             source_session_id=source_session_id,
             source_message_id=source_message_id,

@@ -19,11 +19,13 @@ def test_rrf_aggregates_across_channels():
     only appears in a single one. (Factkey is intentionally weighted higher,
     so this asserts the among-equal-weight property.)"""
     a, b = _m("a"), _m("b")
-    fused, _ = rrf_fuse({
-        "fts": [b, a],     # b: 1.0/61, a: 1.0/62
-        "vector": [a],     # a: 1.0/61
-        "hyde": [a],       # a: 0.9/61
-    })
+    fused, _ = rrf_fuse(
+        {
+            "fts": [b, a],  # b: 1.0/61, a: 1.0/62
+            "vector": [a],  # a: 1.0/61
+            "hyde": [a],  # a: 0.9/61
+        }
+    )
     # b score:           1.0/61                                 = 0.01639
     # a score: 1.0/62 + 1.0/61 + 0.9/61                          = 0.04752
     assert fused[0].memory.id == a.id

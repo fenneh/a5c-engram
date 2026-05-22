@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("A5C_ENGRAM_DB", str(tmp_path / "engram.db"))
     from a5c_engram.server import app as srv_module
+
     srv_module._profiles.clear()
     return TestClient(srv_module.app)
 
@@ -49,9 +50,7 @@ def test_ui_memories_filter_by_type(client):
 
 def test_ui_memory_detail_renders_chain(client):
     _seed(client)
-    mems = client.get(
-        "/api/profiles/atlas/memories", params={"topic": "api_style"}
-    ).json()
+    mems = client.get("/api/profiles/atlas/memories", params={"topic": "api_style"}).json()
     target = next(m for m in mems if m["content"] == "uses gRPC")
     r = client.get(f"/ui/p/atlas/m/{target['id']}")
     assert r.status_code == 200

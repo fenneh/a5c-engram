@@ -1,0 +1,32 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: set up python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: install dependencies
+        run: uv sync --extra dev
+
+      - name: ruff check
+        run: uv run ruff check src tests
+
+      - name: pytest
+        run: uv run pytest -q

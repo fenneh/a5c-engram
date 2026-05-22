@@ -28,6 +28,15 @@ you knew the answer. This is used for HyDE retrieval — do not say you don't
 know. Plausibility beats accuracy.
 """
 
+PARAPHRASE_SYSTEM = """\
+Given a memory's content, produce 3-5 short search-query-style paraphrases
+that someone might use to look it up later. Mix lexical variation
+(synonyms, word order) and intent variation (statement vs question).
+
+Return JSON: {"paraphrases": ["short query 1", "short query 2", ...]}.
+Each paraphrase should be under 80 characters and lower case.
+"""
+
 SYNTH_SYSTEM = """\
 Given a query and supporting memories, write a 1-2 sentence answer grounded
 in those memories. If the memories contradict, prefer the most recent. If
@@ -82,6 +91,15 @@ class AnthropicLLM:
                 continue
         return out
 
+    def paraphrase(self, content: str) -> list[str]:
+        try:
+            raw = self._call(PARAPHRASE_SYSTEM, content, max_tokens=400)
+            payload = json.loads(_strip_codefence(raw))
+            phrases = payload.get("paraphrases", [])
+            return [p.strip() for p in phrases if isinstance(p, str) and p.strip()][:5]
+        except (json.JSONDecodeError, KeyError):
+            return []
+
     def hyde(self, query: str) -> str:
         return self._call(HYDE_SYSTEM, query, max_tokens=200).strip()
 
@@ -96,5 +114,5 @@ def _strip_codefence(s: str) -> str:
     if s.startswith("```"):
         s = s.split("\n", 1)[1] if "\n" in s else s
         if s.endswith("```"):
-            s = s[: -3]
+            s = s[:-3]
     return s.strip()
