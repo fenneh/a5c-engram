@@ -391,12 +391,9 @@ class SqliteStorage:
         # "memory exists but no embedding" or fail mid-way under
         # concurrent writers.
         with conn:
+            conn.execute("DELETE FROM memories_vec WHERE memory_id=?", (mem_id,))
             conn.execute(
-                "DELETE FROM memories_vec WHERE memory_id=?", (mem_id,)
-            )
-            conn.execute(
-                "INSERT INTO memories_vec(memory_id, embedding) "
-                "VALUES (?, ?)",
+                "INSERT INTO memories_vec(memory_id, embedding) VALUES (?, ?)",
                 (mem_id, _f32_blob(embedding)),
             )
 

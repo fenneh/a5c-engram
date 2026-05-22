@@ -148,9 +148,7 @@ class Profile:
             type_value = MemoryType(type).value
         except ValueError:
             valid = ", ".join(t.value for t in MemoryType)
-            raise ValueError(
-                f"unknown memory type {type!r}; must be one of: {valid}"
-            ) from None
+            raise ValueError(f"unknown memory type {type!r}; must be one of: {valid}") from None
         cand = ExtractionCandidate(
             type=type_value,
             content=content,

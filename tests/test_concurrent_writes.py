@@ -47,9 +47,7 @@ def test_concurrent_remember_same_content_collapses(profile):
     def worker():
         barrier.wait()
         for _ in range(10):
-            profile.remember(
-                "the one true memory", type=MemoryType.FACT
-            )
+            profile.remember("the one true memory", type=MemoryType.FACT)
 
     ts = [threading.Thread(target=worker) for _ in range(threads)]
     for t in ts:
