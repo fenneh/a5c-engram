@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ profile }} · sessions · a5c-engram{% endblock %}
+{% block content %}
+<h2>{{ profile }} · ingest sessions</h2>
+{% if not sessions %}
+<p class="muted">No ingest sessions yet.</p>
+{% else %}
+<table>
+  <thead><tr><th>Session</th><th>Messages</th><th>Memories extracted</th><th>First</th><th>Last</th></tr></thead>
+  <tbody>
+  {% for s in sessions %}
+    <tr>
+      <td><code>{{ s.session_id or "—" }}</code></td>
+      <td>{{ s.message_count }}</td>
+      <td>{{ s.memory_count }}</td>
+      <td><small class="muted">{{ fmt_ts(s.first_ts) }}</small></td>
+      <td><small class="muted">{{ fmt_ts(s.last_ts) }}</small></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

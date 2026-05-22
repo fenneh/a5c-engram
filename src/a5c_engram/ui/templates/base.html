@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{% block title %}a5c-engram{% endblock %}</title>
+<link rel="stylesheet" href="/ui/static/pico.min.css">
+<link rel="stylesheet" href="/ui/static/app.css">
+<script src="/ui/static/htmx.min.js" defer></script>
+</head>
+<body>
+<header class="container">
+  <nav>
+    <ul><li><strong><a href="/ui">a5c-engram</a></strong></li></ul>
+    <ul>
+      {% if profile %}
+        <li><a href="/ui/p/{{ profile }}">memories</a></li>
+        <li><a href="/ui/p/{{ profile }}/recall">recall</a></li>
+        <li><a href="/ui/p/{{ profile }}/sessions">sessions</a></li>
+      {% endif %}
+    </ul>
+  </nav>
+</header>
+<main class="container">
+{% block content %}{% endblock %}
+</main>
+<footer class="container muted">
+  <small>a5c-engram &middot; self-hostable agent memory &middot; MIT</small>
+</footer>
+</body>
+</html>

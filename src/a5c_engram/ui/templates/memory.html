@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}{{ memory.id[:8] }} · a5c-engram{% endblock %}
+{% block content %}
+<h2><span class="tag tag-{{ memory.type.value }}">{{ memory.type.value }}</span>
+  {% if memory.fact_key %}<code>{{ memory.fact_key }}</code> v{{ memory.version }}{% endif %}
+</h2>
+
+<article>
+  <p>{{ memory.content }}</p>
+  <footer>
+    <small class="muted">id: <code>{{ memory.id }}</code> · created {{ fmt_ts(memory.created_at) }}
+    {% if memory.source_session_id %} · session <code>{{ memory.source_session_id }}</code>{% endif %}
+    {% if memory.superseded_by %} · superseded by <a href="/ui/p/{{ profile }}/m/{{ memory.superseded_by }}">{{ memory.superseded_by[:8] }}</a>{% endif %}
+    </small>
+  </footer>
+</article>
+
+{% if chain|length > 1 %}
+<h3>Supersession chain</h3>
+<ol>
+  {% for c in chain %}
+    <li>
+      v{{ c.version }} ·
+      {% if c.id == memory.id %}<strong>{{ c.content }}</strong>{% else %}<a href="/ui/p/{{ profile }}/m/{{ c.id }}">{{ c.content }}</a>{% endif %}
+      <small class="muted">{{ fmt_ts(c.created_at) }}</small>
+    </li>
+  {% endfor %}
+</ol>
+{% endif %}
+
+{% if memory.extra %}
+<h3>Extras</h3>
+<pre><code>{% for k, v in memory.extra.items() %}{{ k }}: {{ v }}
+{% endfor %}</code></pre>
+{% endif %}
+
+{% if writes_enabled %}
+<form method="post" action="/api/profiles/{{ profile }}/memories/{{ memory.id }}"
+      hx-delete="/api/profiles/{{ profile }}/memories/{{ memory.id }}"
+      hx-confirm="Forget this memory?"
+      hx-target="body">
+  <button class="secondary outline">Forget</button>
+</form>
+{% endif %}
+{% endblock %}

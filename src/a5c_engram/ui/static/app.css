@@ -1,0 +1,19 @@
+/* a5c-engram UI overrides */
+.muted { color: var(--muted-color, #888); }
+.tag {
+  display: inline-block;
+  padding: 0.05rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border: 1px solid currentColor;
+  margin-right: 0.25rem;
+}
+.tag-fact        { color: #2d7bd3; }
+.tag-event       { color: #d37b2d; }
+.tag-instruction { color: #2da55a; }
+.tag-task        { color: #999; }
+.tag-stale       { color: #c33; }
+
+table { font-size: 0.92rem; }
+article header strong { font-size: 1.05rem; }

@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ profile }} · recall · a5c-engram{% endblock %}
+{% block content %}
+<hgroup>
+  <h2>{{ profile }} · recall playground</h2>
+  <p class="muted">Each channel's top hits, then the RRF fusion. Cloudflare's product is a black box; this isn't.</p>
+</hgroup>
+
+<form method="get" action="/ui/p/{{ profile }}/recall">
+  <input type="search" name="q" placeholder="ask anything" value="{{ q }}" autofocus>
+  <label><input type="checkbox" name="synth" value="1" {% if synth %}checked{% endif %}> synthesise answer</label>
+  <button type="submit">Recall</button>
+</form>
+
+{% if result %}
+  {% if result.synthesis %}
+    <article>
+      <h3>Synthesis</h3>
+      <p>{{ result.synthesis }}</p>
+    </article>
+  {% endif %}
+
+  <h3>Fused (RRF)</h3>
+  {% if not result.hits %}
+    <p class="muted">No hits across any channel.</p>
+  {% else %}
+  <table>
+    <thead><tr><th>#</th><th>Score</th><th>Type</th><th>Content</th></tr></thead>
+    <tbody>
+    {% for h in result.hits %}
+      <tr>
+        <td>{{ h.rank }}</td>
+        <td><code>{{ "%.4f"|format(h.score) }}</code></td>
+        <td><span class="tag tag-{{ h.memory.type.value }}">{{ h.memory.type.value }}</span></td>
+        <td><a href="/ui/p/{{ profile }}/m/{{ h.memory.id }}">{{ h.memory.content }}</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <h3>By channel</h3>
+  <div class="grid">
+    {% for ch_name, hits in result.by_channel.items() %}
+      <article>
+        <header><strong>{{ ch_name }}</strong> <small class="muted">{{ hits|length }}</small></header>
+        {% if not hits %}
+          <p class="muted">no hits</p>
+        {% else %}
+          <ol>
+          {% for h in hits[:5] %}
+            <li>
+              <a href="/ui/p/{{ profile }}/m/{{ h.memory.id }}">{{ h.memory.content[:80] }}{% if h.memory.content|length > 80 %}…{% endif %}</a>
+            </li>
+          {% endfor %}
+          </ol>
+        {% endif %}
+      </article>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

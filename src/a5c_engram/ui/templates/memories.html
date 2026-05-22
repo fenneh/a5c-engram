@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% block title %}{{ profile }} memories · a5c-engram{% endblock %}
+{% block content %}
+<hgroup>
+  <h2>{{ profile }}</h2>
+  <p class="muted">memories</p>
+</hgroup>
+
+<form method="get" action="/ui/p/{{ profile }}" class="grid">
+  <input type="text" name="q" placeholder="Search (FTS+vector hybrid)" value="{{ filter_q }}">
+  <select name="type">
+    <option value="">All types</option>
+    {% for t in ["fact","event","instruction","task"] %}
+      <option value="{{ t }}" {% if filter_type == t %}selected{% endif %}>{{ t }}</option>
+    {% endfor %}
+  </select>
+  <input type="text" name="topic" placeholder="fact_key" value="{{ filter_topic or '' }}">
+  <button type="submit">Filter</button>
+</form>
+
+{% if not memories %}
+  <p class="muted">No memories match.</p>
+{% else %}
+<table>
+  <thead>
+    <tr><th>Type</th><th>Topic</th><th>v</th><th>Content</th><th>Created</th></tr>
+  </thead>
+  <tbody>
+  {% for m in memories %}
+    <tr>
+      <td><span class="tag tag-{{ m.type.value }}">{{ m.type.value }}</span></td>
+      <td><small>{{ m.fact_key or "—" }}</small></td>
+      <td>{{ m.version }}</td>
+      <td>
+        <a href="/ui/p/{{ profile }}/m/{{ m.id }}">{{ m.content }}</a>
+        {% if m.superseded_by %}<span class="tag tag-stale">superseded</span>{% endif %}
+      </td>
+      <td><small class="muted">{{ fmt_ts(m.created_at) }}</small></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

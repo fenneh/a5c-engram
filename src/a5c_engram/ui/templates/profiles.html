@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}profiles · a5c-engram{% endblock %}
+{% block content %}
+<h2>Profiles</h2>
+{% if not profiles %}
+  <p class="muted">No memories yet. Use <code>Profile.open("name").ingest(...)</code> or POST <code>/api/profiles/&lt;name&gt;/ingest</code>.</p>
+{% else %}
+<table>
+  <thead><tr><th>Name</th><th>Total</th><th>Facts</th><th>Events</th><th>Instructions</th><th>Tasks</th><th>Last ingested</th></tr></thead>
+  <tbody>
+  {% for p in profiles %}
+    <tr>
+      <td><a href="/ui/p/{{ p.name }}"><strong>{{ p.name }}</strong></a></td>
+      <td>{{ p.total }}</td>
+      <td>{{ p.counts.fact }}</td>
+      <td>{{ p.counts.event }}</td>
+      <td>{{ p.counts.instruction }}</td>
+      <td>{{ p.counts.task }}</td>
+      <td><small class="muted">{{ fmt_ts(p.last_ingested_at) }}</small></td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}
