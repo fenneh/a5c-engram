@@ -28,8 +28,11 @@ PROFILE = Profile.open("my-agent", db_path="/tmp/a5c_integrate_demo.db")
 # Seed it once so the demo has something to recall against.
 if not PROFILE.list(limit=1):
     PROFILE.remember("We use Postgres in production.", type="fact", topic="database")
-    PROFILE.remember("Always run migrations during the Sunday maintenance window.",
-                     type="instruction", topic="deploy_policy")
+    PROFILE.remember(
+        "Always run migrations during the Sunday maintenance window.",
+        type="instruction",
+        topic="deploy_policy",
+    )
 
 
 @app.get("/ask")
@@ -38,10 +41,7 @@ def ask(q: str):
     result = PROFILE.recall(q, k=5, use_hyde=False)
     return {
         "query": q,
-        "top_hits": [
-            {"content": h.memory.content, "channel": h.channel}
-            for h in result.hits
-        ],
+        "top_hits": [{"content": h.memory.content, "channel": h.channel} for h in result.hits],
     }
 
 

@@ -5,7 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
-from a5c_engram.embed.base import EmbedAdapter, FakeEmbedder
+from a5c_engram.embed import default_embedder
+from a5c_engram.embed.base import EmbedAdapter
 from a5c_engram.extract.deterministic import (
     deterministic_extract,
     parse_temporal_range,
@@ -60,11 +61,11 @@ class Profile:
         llm: LLMAdapter | None = None,
         db_path: str | None = None,
     ) -> Profile:
-        if storage is None:
-            storage = SqliteStorage(path=db_path or _default_db_path())
-            storage.init()
         if embedder is None:
-            embedder = FakeEmbedder()
+            embedder = default_embedder()
+        if storage is None:
+            storage = SqliteStorage(path=db_path or _default_db_path(), dim=embedder.dim)
+            storage.init()
         if llm is None:
             llm = FakeLLM()
         return cls(name, storage=storage, embedder=embedder, llm=llm)

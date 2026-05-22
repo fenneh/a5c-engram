@@ -102,9 +102,10 @@ def main() -> None:
     # ------------------------------------------------------------------
     banner("7. forget — and the chain survives for inspection")
     p.forget(fresh.id)
-    print(f"  forgot {fresh.id[:8]} — get_memory now returns:",
-          p.storage.get_memory(fresh.id))
-    print(f"  supersession chain for {latest.id[:8]} still has {len(p.storage.supersession_chain(latest.id))} entries")
+    print(f"  forgot {fresh.id[:8]} — get_memory now returns:", p.storage.get_memory(fresh.id))
+    print(
+        f"  supersession chain for {latest.id[:8]} still has {len(p.storage.supersession_chain(latest.id))} entries"
+    )
 
     # ------------------------------------------------------------------
     print("\nDone. Launch the inspector to browse this profile:")

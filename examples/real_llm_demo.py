@@ -37,21 +37,30 @@ def main() -> None:
 
     # A few paragraphs the canned FakeLLM patterns would miss entirely.
     transcript = [
-        {"role": "user", "content": (
-            "Quick context: we just finished migrating the auth service from "
-            "JWT to opaque session tokens stored in Redis. Token TTL is 24 "
-            "hours, refresh extends by another 24. The migration shipped on "
-            "2026-05-18 and so far we haven't seen any reports of session loss."
-        )},
-        {"role": "user", "content": (
-            "Going forward, never store JWT secrets in environment variables — "
-            "always pull from Vault at boot. We learned this the hard way when "
-            "the staging keys leaked into a CI log in March."
-        )},
-        {"role": "assistant", "content": (
-            "Got it. I'll remember: opaque-token auth, 24h TTL, Vault for "
-            "secrets, no env-var JWT keys."
-        )},
+        {
+            "role": "user",
+            "content": (
+                "Quick context: we just finished migrating the auth service from "
+                "JWT to opaque session tokens stored in Redis. Token TTL is 24 "
+                "hours, refresh extends by another 24. The migration shipped on "
+                "2026-05-18 and so far we haven't seen any reports of session loss."
+            ),
+        },
+        {
+            "role": "user",
+            "content": (
+                "Going forward, never store JWT secrets in environment variables — "
+                "always pull from Vault at boot. We learned this the hard way when "
+                "the staging keys leaked into a CI log in March."
+            ),
+        },
+        {
+            "role": "assistant",
+            "content": (
+                "Got it. I'll remember: opaque-token auth, 24h TTL, Vault for "
+                "secrets, no env-var JWT keys."
+            ),
+        },
     ]
 
     print("Ingesting with real LLM (this calls Anthropic — costs a few cents)…")

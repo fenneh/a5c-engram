@@ -53,16 +53,14 @@ def main() -> None:
                 f"decision: {fields.get('decision', 'unknown')}",
                 f"action: {action}",
             ]
-            messages.append(
-                {"role": "assistant", "content": "\n".join(t for t in text_parts if t)}
-            )
+            messages.append({"role": "assistant", "content": "\n".join(t for t in text_parts if t)})
         committed = p.ingest(messages, session_id=instrument, use_llm=False)
         total_msgs += len(messages)
         total_mems += len(committed)
         print(f"  {instrument}: {len(messages)} msgs → {len(committed)} memories")
 
     print(f"\ningested {total_msgs} messages → {total_mems} memories into '{profile_name}'")
-    print(f"start the inspector with: uv run python -m a5c_engram.server")
+    print("start the inspector with: uv run python -m a5c_engram.server")
 
 
 if __name__ == "__main__":
