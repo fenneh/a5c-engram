@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import hashlib
 import time
-import uuid
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from typing import Any, Literal
@@ -64,8 +63,23 @@ class Memory:
         expires_at: float | None = None,
         extra: dict[str, Any] | None = None,
     ) -> Memory:
+        # Deterministic id from the key fields. Two writes of the same
+        # (profile, type, session_id, fact_key, content) produce the same
+        # id, so the storage layer's INSERT OR REPLACE collapses them and
+        # remember() is safely re-runnable.
+        h = hashlib.sha256()
+        h.update(profile.encode())
+        h.update(b"|")
+        h.update(MemoryType(type).value.encode())
+        h.update(b"|")
+        h.update((source_session_id or "").encode())
+        h.update(b"|")
+        h.update((fact_key or "").encode())
+        h.update(b"|")
+        h.update(content.encode())
+        mem_id = h.hexdigest()[:32]
         return cls(
-            id=str(uuid.uuid4()),
+            id=mem_id,
             profile=profile,
             type=MemoryType(type),
             content=content,

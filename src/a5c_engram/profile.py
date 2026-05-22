@@ -240,6 +240,12 @@ class Profile:
             extra={"confidence": cand.confidence, **(extra or {})},
         )
         if cand.fact_key:
+            # Re-runnability: if the latest version under this fact_key already
+            # has identical content, no-op. Otherwise we'd grow the chain
+            # forever on repeated remember() calls with the same content.
+            prior = self.storage.latest_for_factkey(self.name, cand.fact_key)
+            if prior is not None and prior.content == cand.content:
+                return prior
             self.storage.supersede(self.name, cand.fact_key, mem)
         else:
             self.storage.add_memory(mem)
