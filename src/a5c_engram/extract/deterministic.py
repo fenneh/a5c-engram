@@ -74,27 +74,42 @@ def deterministic_extract(text: str) -> list[ExtractionCandidate]:
             )
         )
 
-    if _INSTRUCTION_VERBS.search(text) and len(text) < 400:
-        out.append(
-            ExtractionCandidate(
-                type="instruction",
-                content=text.strip()[:200],
-                confidence=0.5,
-                evidence=text[:200],
+    for sentence in _split_sentences(text):
+        clean = sentence.strip()
+        if not clean or len(clean) > 240:
+            continue
+        if _INSTRUCTION_VERBS.search(clean):
+            out.append(
+                ExtractionCandidate(
+                    type="instruction",
+                    content=clean[:200],
+                    confidence=0.5,
+                    evidence=clean[:200],
+                )
             )
-        )
-
-    if _TASK_VERBS.search(text) and len(text) < 240:
-        out.append(
-            ExtractionCandidate(
-                type="task",
-                content=text.strip()[:200],
-                confidence=0.5,
-                evidence=text[:200],
+        if _TASK_VERBS.search(clean):
+            out.append(
+                ExtractionCandidate(
+                    type="task",
+                    content=clean[:200],
+                    confidence=0.5,
+                    evidence=clean[:200],
+                )
             )
-        )
 
     return out
+
+
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def _split_sentences(text: str) -> list[str]:
+    """Cheap sentence splitter — good enough for instruction/task scoping
+    without pulling in a tokenizer."""
+    # Strip leading [role] tags inserted by Profile.ingest so they don't
+    # leak into the extracted content.
+    stripped = re.sub(r"^\s*\[(?:user|assistant|system|tool)\]\s*", "", text, flags=re.MULTILINE)
+    return [s for s in _SENTENCE_SPLIT.split(stripped) if s.strip()]
 
 
 def has_relative_date(text: str) -> bool:

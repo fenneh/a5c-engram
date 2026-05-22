@@ -1,6 +1,15 @@
 from __future__ import annotations
 
+import re
+
 from a5c_engram.llm.base import ExtractionCandidate
+
+_SENTENCE_SPLIT = re.compile(r"(?<=[.!?])\s+|\n+")
+
+
+def _sentences(text: str) -> list[str]:
+    stripped = re.sub(r"^\s*\[(?:user|assistant|system|tool)\]\s*", "", text, flags=re.MULTILINE)
+    return [s.strip() for s in _SENTENCE_SPLIT.split(stripped) if s.strip()]
 
 
 class FakeLLM:
@@ -31,24 +40,28 @@ class FakeLLM:
                     evidence=text[:120],
                 )
             )
-        if "deployed" in lower or "shipped" in lower:
-            out.append(
-                ExtractionCandidate(
-                    type="event",
-                    content=text.strip()[:200],
-                    confidence=0.6,
-                    evidence=text[:200],
+        # Sentence-scoped matches so the stub doesn't capture a whole
+        # multi-message blob just because one sentence triggers a pattern.
+        for sentence in _sentences(text):
+            sl = sentence.lower()
+            if "deployed" in sl or "shipped" in sl:
+                out.append(
+                    ExtractionCandidate(
+                        type="event",
+                        content=sentence[:200],
+                        confidence=0.6,
+                        evidence=sentence[:200],
+                    )
                 )
-            )
-        if "always " in lower or "never " in lower:
-            out.append(
-                ExtractionCandidate(
-                    type="instruction",
-                    content=text.strip()[:200],
-                    confidence=0.6,
-                    evidence=text[:200],
+            if "always " in sl or "never " in sl:
+                out.append(
+                    ExtractionCandidate(
+                        type="instruction",
+                        content=sentence[:200],
+                        confidence=0.6,
+                        evidence=sentence[:200],
+                    )
                 )
-            )
         return out
 
     def paraphrase(self, content: str) -> list[str]:

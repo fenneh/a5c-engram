@@ -88,8 +88,14 @@ class Profile:
         if use_llm and self.llm is not None:
             candidates.extend(llm_extract(text, self.llm))
 
+        # Dedup across deterministic + LLM by (type, normalised content).
+        seen: set[tuple[str, str]] = set()
         committed: list[Memory] = []
         for cand in candidates:
+            dedup_key = (cand.type, " ".join(cand.content.lower().split()))
+            if dedup_key in seen:
+                continue
+            seen.add(dedup_key)
             ok, _reason = verify_candidate(cand, text)
             if not ok:
                 continue
