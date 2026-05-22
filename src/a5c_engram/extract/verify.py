@@ -4,8 +4,10 @@ from a5c_engram.llm.base import ExtractionCandidate
 
 
 def verify_candidate(cand: ExtractionCandidate, source_text: str) -> tuple[bool, str]:
-    """Eight verification checks, à la Cloudflare. Cheap regex/heuristic
-    layer that runs before storage. Returns (ok, reason)."""
+    """Eight cheap verification checks that run before a candidate is
+    stored. Returns (ok, reason). Catches empty/over-long content,
+    unknown types, candidates with no token overlap with the source
+    text, and malformed fact_keys."""
 
     content = (cand.content or "").strip()
     src = source_text or ""
