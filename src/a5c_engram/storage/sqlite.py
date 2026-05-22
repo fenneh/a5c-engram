@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 import struct
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -97,26 +98,45 @@ class SqliteStorage:
     def __init__(self, path: str | Path = "a5c_engram.db", *, dim: int = 384):
         self.path = Path(path)
         self.dim = dim
-        self._conn: sqlite3.Connection | None = None
+        # Per-thread connection storage. SQLite handles aren't thread-safe
+        # for shared use (commit state interleaves between threads on the
+        # same handle); WAL mode supports many writers as long as each
+        # has its own connection. _vec_available is set on first open and
+        # then read-only, so it's safe across threads.
+        self._tls = threading.local()
         self._vec_available = False
+        self._vec_check_done = False
+        self._init_lock = threading.Lock()
 
     # ---- lifecycle -------------------------------------------------
     def _connect(self) -> sqlite3.Connection:
-        if self._conn is not None:
-            return self._conn
-        conn = sqlite3.connect(self.path, check_same_thread=False)
+        conn = getattr(self._tls, "conn", None)
+        if conn is not None:
+            return conn
+        conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")
+        # 5-second busy timeout so concurrent writers under WAL queue
+        # briefly rather than failing with SQLITE_BUSY.
+        conn.execute("PRAGMA busy_timeout=5000")
         if sqlite_vec is not None:
             try:
                 conn.enable_load_extension(True)
                 sqlite_vec.load(conn)
                 conn.enable_load_extension(False)
-                self._vec_available = True
+                # _vec_available is computed per-connection but the answer
+                # is the same across all of them, so cache the result on
+                # the storage so init() and downstream guards have a
+                # consistent view.
+                if not self._vec_check_done:
+                    with self._init_lock:
+                        if not self._vec_check_done:
+                            self._vec_available = True
+                            self._vec_check_done = True
             except Exception:
-                self._vec_available = False
-        self._conn = conn
+                pass
+        self._tls.conn = conn
         return conn
 
     def init(self) -> None:
@@ -364,12 +384,21 @@ class SqliteStorage:
         if not self._vec_available:
             return
         conn = self._connect()
-        conn.execute("DELETE FROM memories_vec WHERE memory_id=?", (mem_id,))
-        conn.execute(
-            "INSERT INTO memories_vec(memory_id, embedding) VALUES (?, ?)",
-            (mem_id, _f32_blob(embedding)),
-        )
-        conn.commit()
+        # sqlite-vec's vec0 virtual table does NOT support INSERT OR
+        # REPLACE — it'd raise UNIQUE constraint on re-insert of the
+        # same memory_id. So delete-then-insert is the only path, and
+        # we wrap both in a transaction so the gap can't surface as
+        # "memory exists but no embedding" or fail mid-way under
+        # concurrent writers.
+        with conn:
+            conn.execute(
+                "DELETE FROM memories_vec WHERE memory_id=?", (mem_id,)
+            )
+            conn.execute(
+                "INSERT INTO memories_vec(memory_id, embedding) "
+                "VALUES (?, ?)",
+                (mem_id, _f32_blob(embedding)),
+            )
 
     # ---- ingest log -----------------------------------------------
     def list_sessions(self, profile: str) -> list[dict]:

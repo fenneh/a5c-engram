@@ -105,12 +105,24 @@ class Memory:
 
 @dataclass
 class RecallHit:
-    """One memory + its retrieval provenance."""
+    """One memory + its retrieval provenance.
+
+    `score` is the RRF fusion score for fused hits or the per-channel
+    RRF contribution for channel hits. RRF scores are rank-based, not
+    similarity-based, so the absolute number isn't comparable across
+    queries — use it for ordering, not thresholding.
+
+    `channel_count` (fused hits only) is how many channels surfaced
+    this memory. A memory hit by 3+ channels is a much stronger signal
+    than one hit by a single channel at the same fused score. Per-channel
+    hits leave this at 1.
+    """
 
     memory: Memory
     channel: str
     rank: int
     score: float
+    channel_count: int = 1
 
 
 @dataclass

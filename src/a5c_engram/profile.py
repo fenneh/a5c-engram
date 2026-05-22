@@ -30,6 +30,15 @@ def _default_db_path() -> str:
     return str(base / "engram.db")
 
 
+# Direct-write content is capped so misuse (logging a 100kb blob to
+# memory) gets rejected loudly rather than silently bloating storage and
+# the FTS index. The verify_candidate path used by ingest() is already
+# stricter (600-char atomic-extraction cap); this cap is the looser
+# "you definitely didn't mean to do this" ceiling for direct remember()
+# calls where the caller wants to bypass extraction.
+MAX_DIRECT_CONTENT_CHARS = 10_000
+
+
 class Profile:
     """A named, isolated memory profile.
 
@@ -115,10 +124,35 @@ class Profile:
         expires_at: float | None = None,
         extra: dict[str, Any] | None = None,
     ) -> Memory:
-        """Directly write a memory (no extraction). Used when the agent itself
-        decides what to remember."""
+        """Directly write a memory, bypassing extraction. Used when the
+        caller already knows the type and content shape.
+
+        Idempotent: two `remember()` calls with the same `(type, content,
+        session_id, topic)` write the same memory id, so the storage's
+        INSERT OR REPLACE collapses them. When `topic` is set, repeated
+        writes of the same content no-op rather than growing the
+        supersession chain forever.
+
+        Raises ValueError on empty / whitespace-only content, on content
+        longer than MAX_DIRECT_CONTENT_CHARS, or on an unknown `type`.
+        """
+        if not content or not content.strip():
+            raise ValueError("content must be non-empty")
+        if len(content) > MAX_DIRECT_CONTENT_CHARS:
+            raise ValueError(
+                f"content too long ({len(content)} chars > "
+                f"{MAX_DIRECT_CONTENT_CHARS}); use ingest() for chunked "
+                "extraction or pre-truncate before calling remember()"
+            )
+        try:
+            type_value = MemoryType(type).value
+        except ValueError:
+            valid = ", ".join(t.value for t in MemoryType)
+            raise ValueError(
+                f"unknown memory type {type!r}; must be one of: {valid}"
+            ) from None
         cand = ExtractionCandidate(
-            type=MemoryType(type).value,
+            type=type_value,
             content=content,
             fact_key=topic,
             confidence=1.0,
@@ -127,7 +161,11 @@ class Profile:
         mem = self._commit_candidate(
             cand, session_id=session_id, expires_at=expires_at, extra=extra
         )
-        assert mem is not None
+        if mem is None:
+            # _commit_candidate currently returns Memory in all branches.
+            # Guard anyway so callers get a clear error instead of an
+            # opaque assertion if a future refactor changes that.
+            raise RuntimeError("memory commit returned None")
         return mem
 
     def recall(

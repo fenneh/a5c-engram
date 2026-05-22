@@ -30,21 +30,35 @@ def rrf_fuse(
 
     scores: dict[str, float] = {}
     best_memory: dict[str, Memory] = {}
+    channel_count: dict[str, int] = {}
     per_channel: dict[str, list[RecallHit]] = {}
 
     for channel, mems in by_channel.items():
         w = weights.get(channel, 1.0)
         ch_hits: list[RecallHit] = []
+        seen_in_channel: set[str] = set()
         for rank, mem in enumerate(mems, start=1):
             rrf = w / (k + rank)
             scores[mem.id] = scores.get(mem.id, 0.0) + rrf
             best_memory[mem.id] = mem
+            # A channel that returns the same id twice (shouldn't happen
+            # but storage adapters might glitch) only counts once toward
+            # cross-channel agreement.
+            if mem.id not in seen_in_channel:
+                channel_count[mem.id] = channel_count.get(mem.id, 0) + 1
+                seen_in_channel.add(mem.id)
             ch_hits.append(RecallHit(memory=mem, channel=channel, rank=rank, score=rrf))
         per_channel[channel] = ch_hits
 
     ranked = sorted(scores.items(), key=lambda kv: kv[1], reverse=True)[:top_n]
     fused = [
-        RecallHit(memory=best_memory[mid], channel="fused", rank=i + 1, score=s)
+        RecallHit(
+            memory=best_memory[mid],
+            channel="fused",
+            rank=i + 1,
+            score=s,
+            channel_count=channel_count.get(mid, 1),
+        )
         for i, (mid, s) in enumerate(ranked)
     ]
     return fused, per_channel

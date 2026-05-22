@@ -80,6 +80,7 @@ def api_recall(name: str, body: RecallBody):
                 "channel": h.channel,
                 "rank": h.rank,
                 "score": h.score,
+                "channel_count": h.channel_count,
             }
             for h in result.hits
         ],
