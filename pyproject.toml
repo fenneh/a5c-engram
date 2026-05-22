@@ -1,8 +1,7 @@
 [project]
 name = "a5c-engram"
 version = "0.1.0"
-description = "Self-hostable, extraction-first agent memory. Cloudflare Agent Memory in a library."
-readme = "README.md"
+description = "Self-hostable, extraction-first agent memory."
 license = { text = "MIT" }
 requires-python = ">=3.11"
 authors = [{ name = "fen" }]
